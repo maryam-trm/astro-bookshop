@@ -1,0 +1,602 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Your Cart | Little Leaf Books</title>
+  </head>
+
+  <body>
+    <header>
+      <nav>
+        <a class="logo" href="/">Little Leaf Books</a>
+
+        <div class="nav-links">
+          <a href="/books">Books</a>
+          <a href="/cart">
+            Cart <span id="cart-count">0</span>
+          </a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="heading">
+        <p class="eyebrow">YOUR ORDER</p>
+        <h1>Your Cart</h1>
+      </div>
+
+      <div id="empty-cart" class="empty hidden">
+        <h2>Your cart is empty</h2>
+        <p>Choose a book and personalize it for someone special.</p>
+
+        <a class="button" href="/books">
+          Explore books
+        </a>
+      </div>
+
+      <div id="cart-layout" class="cart-layout hidden">
+        <section>
+          <div id="cart-items"></div>
+        </section>
+
+        <aside class="summary">
+          <h2>Order summary</h2>
+
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <strong id="subtotal">$0.00</strong>
+          </div>
+
+          <div class="summary-row">
+            <span>Shipping</span>
+            <span>Calculated at checkout</span>
+          </div>
+
+          <hr />
+
+          <div class="summary-row total">
+            <span>Total</span>
+            <strong id="total">$0.00</strong>
+          </div>
+
+          <a class="checkout-button" href="/checkout">
+            Proceed to Checkout
+          </a>
+
+          <a class="continue" href="/books">
+            ← Continue shopping
+          </a>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const CART_KEY = "bookshop-cart";
+
+      const cartItems = document.getElementById("cart-items");
+      const cartCount = document.getElementById("cart-count");
+      const subtotalElement = document.getElementById("subtotal");
+      const totalElement = document.getElementById("total");
+      const emptyCart = document.getElementById("empty-cart");
+      const cartLayout = document.getElementById("cart-layout");
+
+      function getCart() {
+        try {
+          return JSON.parse(
+            localStorage.getItem(CART_KEY) || "[]"
+          );
+        } catch {
+          return [];
+        }
+      }
+
+      function saveCart(cart) {
+        localStorage.setItem(
+          CART_KEY,
+          JSON.stringify(cart)
+        );
+      }
+
+      function updateCartCount(cart) {
+        if (!cartCount) return;
+
+        const count = cart.reduce(
+          (sum, item) =>
+            sum + Number(item.quantity || 1),
+          0
+        );
+
+        cartCount.textContent = String(count);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      async function getQuote(cart) {
+        const items = cart.map((item) => ({
+          book_id: item.book_id,
+          quantity: Number(item.quantity),
+          cover_type: item.cover_type,
+          gift_wrap: item.gift_wrap,
+          child_name_arabic:
+            item.child_name_arabic,
+          child_name_secondary:
+            item.child_name_secondary,
+          secondary_language:
+            item.secondary_language,
+          child_gender:
+            item.child_gender,
+        }));
+
+        const response = await fetch("/api/cart/quote", {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({ items }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Could not calculate cart"
+          );
+        }
+
+        return data;
+      }
+
+      async function renderCart() {
+        let cart = getCart();
+
+        updateCartCount(cart);
+
+        if (cart.length === 0) {
+          emptyCart?.classList.remove("hidden");
+          cartLayout?.classList.add("hidden");
+          return;
+        }
+
+        emptyCart?.classList.add("hidden");
+        cartLayout?.classList.remove("hidden");
+
+        try {
+          const quote = await getQuote(cart);
+
+          cart = cart.map((item, index) => ({
+            ...item,
+            ...quote.items[index],
+          }));
+
+          saveCart(cart);
+
+          if (subtotalElement) {
+            subtotalElement.textContent =
+              `$${Number(quote.subtotal).toFixed(2)}`;
+          }
+
+          if (totalElement) {
+            totalElement.textContent =
+              `$${Number(quote.subtotal).toFixed(2)}`;
+          }
+        } catch (error) {
+          console.error(error);
+        }
+
+        if (!cartItems) return;
+
+        cartItems.innerHTML = cart
+          .map(
+            (item) => `
+              <article class="cart-item">
+                <a
+                  class="image"
+                  href="/books/${escapeHtml(item.slug)}"
+                >
+                  <img
+                    src="${escapeHtml(item.cover)}"
+                    alt="${escapeHtml(item.title)}"
+                  />
+                </a>
+
+                <div class="item-content">
+                  <div class="top-row">
+                    <div>
+                      <p class="category">
+                        Personalized book
+                      </p>
+
+                      <h2>
+                        ${escapeHtml(item.title)}
+                      </h2>
+                    </div>
+
+                    <button
+                      class="remove-button"
+                      data-remove="${escapeHtml(item.cart_id)}"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div class="personalization">
+                    <p>
+                      <strong>Arabic name:</strong>
+                      ${escapeHtml(item.child_name_arabic)}
+                    </p>
+
+                    <p>
+                      <strong>Second name:</strong>
+                      ${escapeHtml(item.child_name_secondary)}
+                    </p>
+
+                    <p>
+                      <strong>Language:</strong>
+                      ${escapeHtml(item.secondary_language)}
+                    </p>
+
+                    <p>
+                      <strong>Child:</strong>
+                      ${escapeHtml(item.child_gender)}
+                    </p>
+
+                    <p>
+                      <strong>Cover:</strong>
+                      ${escapeHtml(item.cover_type)}
+                    </p>
+
+                    <p>
+                      <strong>Gift wrap:</strong>
+                      ${item.gift_wrap ? "Yes" : "No"}
+                    </p>
+                  </div>
+
+                  <div class="bottom-row">
+                    <label>
+                      Quantity
+
+                      <select
+                        class="quantity"
+                        data-cart-id="${escapeHtml(item.cart_id)}"
+                      >
+                        ${[1, 2, 3, 4, 5]
+                          .map(
+                            (quantity) => `
+                              <option
+                                value="${quantity}"
+                                ${
+                                  Number(item.quantity) === quantity
+                                    ? "selected"
+                                    : ""
+                                }
+                              >
+                                ${quantity}
+                              </option>
+                            `
+                          )
+                          .join("")}
+                      </select>
+                    </label>
+
+                    <strong class="price">
+                      $${Number(item.line_total).toFixed(2)}
+                    </strong>
+                  </div>
+                </div>
+              </article>
+            `
+          )
+          .join("");
+
+        document
+          .querySelectorAll("[data-remove]")
+          .forEach((button) => {
+            button.addEventListener("click", () => {
+              const id =
+                button.getAttribute("data-remove");
+
+              const updated = getCart().filter(
+                (item) => item.cart_id !== id
+              );
+
+              saveCart(updated);
+              renderCart();
+            });
+          });
+
+        document
+          .querySelectorAll(".quantity")
+          .forEach((select) => {
+            select.addEventListener("change", () => {
+              if (!(select instanceof HTMLSelectElement)) {
+                return;
+              }
+
+              const cartId =
+                select.dataset.cartId;
+
+              const updated = getCart().map(
+                (item) =>
+                  item.cart_id === cartId
+                    ? {
+                        ...item,
+                        quantity: Number(
+                          select.value
+                        ),
+                      }
+                    : item
+              );
+
+              saveCart(updated);
+              renderCart();
+            });
+          });
+      }
+
+      renderCart();
+    </script>
+  </body>
+</html>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: #faf8f4;
+    color: #222;
+    font-family: Arial, sans-serif;
+  }
+
+  header {
+    background: white;
+    border-bottom: 1px solid #eee;
+  }
+
+  nav {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px 24px;
+
+    display: flex;
+    justify-content: space-between;
+  }
+
+  nav a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .logo {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 24px;
+  }
+
+  #cart-count {
+    background: #222;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 60px 24px 100px;
+  }
+
+  .heading {
+    margin-bottom: 45px;
+  }
+
+  .eyebrow {
+    color: #777;
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
+  h1 {
+    margin: 8px 0;
+    font-size: 48px;
+  }
+
+  .cart-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 50px;
+    align-items: start;
+  }
+
+  .cart-item {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 25px;
+
+    padding: 25px 0;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .image img {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+
+  .item-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .top-row,
+  .bottom-row,
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .category {
+    margin: 0;
+    color: #777;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  h2 {
+    margin: 7px 0;
+  }
+
+  .remove-button {
+    border: 0;
+    background: none;
+    color: #9d3737;
+    cursor: pointer;
+  }
+
+  .personalization {
+    margin: 15px 0;
+
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+  }
+
+  .personalization p {
+    margin: 0;
+    font-size: 14px;
+    color: #555;
+  }
+
+  .bottom-row {
+    margin-top: auto;
+    align-items: end;
+  }
+
+  select {
+    display: block;
+    margin-top: 6px;
+    padding: 8px 12px;
+  }
+
+  .price {
+    font-size: 22px;
+  }
+
+  .summary {
+    position: sticky;
+    top: 30px;
+
+    padding: 28px;
+    border-radius: 16px;
+    background: white;
+  }
+
+  .summary h2 {
+    margin-top: 0;
+    margin-bottom: 28px;
+  }
+
+  .summary-row {
+    margin: 18px 0;
+  }
+
+  .summary-row span:last-child {
+    text-align: right;
+  }
+
+  .total {
+    font-size: 20px;
+  }
+
+  .checkout-button {
+    display: block;
+
+    margin-top: 25px;
+    padding: 16px;
+
+    border-radius: 10px;
+
+    background: #222;
+    color: white;
+
+    text-align: center;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .continue {
+    display: block;
+    margin-top: 18px;
+
+    color: #555;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .empty {
+    padding: 80px 30px;
+    text-align: center;
+    background: white;
+    border-radius: 16px;
+  }
+
+  .button {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 14px 22px;
+
+    border-radius: 8px;
+
+    background: #222;
+    color: white;
+
+    text-decoration: none;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  @media (max-width: 850px) {
+    .cart-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .summary {
+      position: static;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .cart-item {
+      grid-template-columns: 100px 1fr;
+    }
+
+    .personalization {
+      grid-template-columns: 1fr;
+    }
+
+    h1 {
+      font-size: 38px;
+    }
+  }
+</style>

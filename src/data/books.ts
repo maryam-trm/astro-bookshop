@@ -1,5 +1,6 @@
 export const books = [
   {
+    id: 1,
     slug: "little-explorer",
     title: "The Little Explorer",
     author: "Maya Rivers",
@@ -7,10 +8,12 @@ export const books = [
     price: 18,
     age: "6-9",
     language: "English",
-    description: "A colorful adventure about curiosity, friendship, and discovering new places.",
+    description:
+      "A colorful adventure about curiosity, friendship, and discovering new places.",
     cover: "/covers/little-explorer.jpg",
   },
   {
+    id: 2,
     slug: "moonlight-stories",
     title: "Moonlight Stories",
     author: "Lina Stone",
@@ -18,10 +21,12 @@ export const books = [
     price: 15,
     age: "4-7",
     language: "English",
-    description: "A collection of gentle bedtime stories for young readers.",
+    description:
+      "A collection of gentle bedtime stories for young readers.",
     cover: "/covers/moonlight-stories.jpg",
   },
   {
+    id: 3,
     slug: "science-for-kids",
     title: "Science for Curious Kids",
     author: "Adam Green",
@@ -29,10 +34,12 @@ export const books = [
     price: 21,
     age: "8-12",
     language: "English",
-    description: "Simple experiments and explanations that make science fun.",
+    description:
+      "Simple experiments and explanations that make science fun.",
     cover: "/covers/science-for-kids.jpg",
   },
   {
+    id: 4,
     slug: "my-first-arabic-book",
     title: "My First Arabic Book",
     author: "Nour Hassan",
@@ -40,10 +47,12 @@ export const books = [
     price: 17,
     age: "5-8",
     language: "Arabic",
-    description: "A friendly introduction to Arabic words and everyday vocabulary.",
+    description:
+      "A friendly introduction to Arabic words and everyday vocabulary.",
     cover: "/covers/arabic-book.jpg",
   },
   {
+    id: 5,
     slug: "animal-world",
     title: "Amazing Animal World",
     author: "Sara Miles",
@@ -51,10 +60,12 @@ export const books = [
     price: 19,
     age: "6-10",
     language: "English",
-    description: "Discover fascinating animals and the environments they live in.",
+    description:
+      "Discover fascinating animals and the environments they live in.",
     cover: "/covers/animal-world.jpg",
   },
   {
+    id: 6,
     slug: "creative-minds",
     title: "Creative Minds",
     author: "Emma Clark",
@@ -62,7 +73,8 @@ export const books = [
     price: 16,
     age: "7-11",
     language: "English",
-    description: "Drawing, puzzles, and creative activities designed for curious minds.",
+    description:
+      "Drawing, puzzles, and creative activities designed for curious minds.",
     cover: "/covers/creative-minds.jpg",
   },
 ];

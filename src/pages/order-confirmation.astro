@@ -1,0 +1,263 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Order Confirmed | Little Leaf Books</title>
+  </head>
+
+  <body>
+    <main>
+      <section class="confirmation">
+        <div class="icon">✓</div>
+
+        <p class="eyebrow">ORDER CONFIRMED</p>
+
+        <h1>Thank you for your order!</h1>
+
+        <p class="intro">
+          Your payment was successful and your personalized
+          book order is now being processed.
+        </p>
+
+        <div class="order-box">
+          <div>
+            <span>Order number</span>
+            <strong id="order-number">—</strong>
+          </div>
+
+          <div>
+            <span>Total</span>
+            <strong id="order-total">—</strong>
+          </div>
+
+          <div>
+            <span>Payment status</span>
+            <strong id="payment-status">—</strong>
+          </div>
+
+          <div>
+            <span>Order status</span>
+            <strong id="order-status">—</strong>
+          </div>
+
+          <div>
+            <span>Payment reference</span>
+            <strong id="payment-reference">—</strong>
+          </div>
+        </div>
+
+        <a href="/books" class="button">
+          Continue Shopping
+        </a>
+      </section>
+    </main>
+
+    <script>
+      const LAST_ORDER_KEY =
+        "bookshop-last-order";
+
+      try {
+        const stored =
+          localStorage.getItem(
+            LAST_ORDER_KEY
+          );
+
+        if (!stored) {
+          window.location.href = "/";
+        } else {
+          const order =
+            JSON.parse(stored);
+
+          const orderNumber =
+            document.getElementById(
+              "order-number"
+            );
+
+          const orderTotal =
+            document.getElementById(
+              "order-total"
+            );
+
+          const paymentStatus =
+            document.getElementById(
+              "payment-status"
+            );
+
+          const orderStatus =
+            document.getElementById(
+              "order-status"
+            );
+
+          const paymentReference =
+            document.getElementById(
+              "payment-reference"
+            );
+
+          if (orderNumber) {
+            orderNumber.textContent =
+              `#${order.order_id}`;
+          }
+
+          if (orderTotal) {
+            orderTotal.textContent =
+              `$${Number(
+                order.total
+              ).toFixed(2)}`;
+          }
+
+          if (paymentStatus) {
+            paymentStatus.textContent =
+              order.payment_status ||
+              "pending";
+          }
+
+          if (orderStatus) {
+            orderStatus.textContent =
+              order.order_status ||
+              "pending";
+          }
+
+          if (paymentReference) {
+            paymentReference.textContent =
+              order.payment_reference ||
+              "—";
+          }
+        }
+      } catch (error) {
+        console.error(error);
+        window.location.href = "/";
+      }
+    </script>
+  </body>
+</html>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #faf8f4;
+    color: #222;
+  }
+
+  main {
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 40px 24px;
+  }
+
+  .confirmation {
+    width: 100%;
+    max-width: 650px;
+
+    padding: 60px;
+
+    background: white;
+    border-radius: 20px;
+
+    text-align: center;
+  }
+
+  .icon {
+    width: 70px;
+    height: 70px;
+
+    margin: auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e5f5e9;
+    color: #27703f;
+
+    font-size: 34px;
+    font-weight: bold;
+  }
+
+  .eyebrow {
+    margin-top: 28px;
+
+    color: #777;
+
+    letter-spacing: 2px;
+    font-size: 12px;
+  }
+
+  h1 {
+    margin: 12px 0;
+
+    font-size: 42px;
+  }
+
+  .intro {
+    color: #666;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  .order-box {
+    margin: 35px 0;
+    padding: 25px;
+
+    background: #faf8f4;
+    border-radius: 14px;
+  }
+
+  .order-box div {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+
+    padding: 12px 0;
+
+    border-bottom: 1px solid #ddd;
+  }
+
+  .order-box div:last-child {
+    border-bottom: 0;
+  }
+
+  .order-box span {
+    color: #666;
+  }
+
+  .button {
+    display: inline-block;
+
+    margin-top: 20px;
+    padding: 15px 25px;
+
+    background: #222;
+    color: white;
+
+    border-radius: 9px;
+
+    text-decoration: none;
+  }
+
+  @media (max-width: 600px) {
+    .confirmation {
+      padding: 35px 22px;
+    }
+
+    h1 {
+      font-size: 34px;
+    }
+
+    .order-box div {
+      flex-direction: column;
+      gap: 5px;
+      text-align: left;
+    }
+  }
+</style>

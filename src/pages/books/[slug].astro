@@ -19,13 +19,28 @@ const { book } = Astro.props;
   </head>
 
   <body>
+    <header>
+      <nav>
+        <a class="logo" href="/">Little Leaf Books</a>
+
+        <div class="nav-links">
+          <a href="/books">Books</a>
+          <a href="/cart">
+            Cart <span id="cart-count">0</span>
+          </a>
+        </div>
+      </nav>
+    </header>
+
     <main>
       <a class="back" href="/books">← Back to books</a>
 
-      <section class="book">
-        <img src={book.cover} alt={book.title} />
+      <section class="product">
+        <div class="product-image">
+          <img src={book.cover} alt={book.title} />
+        </div>
 
-        <div class="details">
+        <div class="product-info">
           <p class="category">{book.category}</p>
 
           <h1>{book.title}</h1>
@@ -36,22 +51,370 @@ const { book } = Astro.props;
             {book.description}
           </p>
 
-          <div class="info">
-            <p><strong>Age:</strong> {book.age}</p>
-            <p><strong>Language:</strong> {book.language}</p>
-            <p><strong>Category:</strong> {book.category}</p>
+          <div class="metadata">
+            <span>Age {book.age}</span>
+            <span>{book.language}</span>
+            <span>{book.category}</span>
           </div>
 
-          <p class="price">${book.price}</p>
+          <hr />
 
-          <button>Add to cart</button>
+          <form
+            id="customization-form"
+            data-book-id={book.id}
+            data-book-title={book.title}
+            data-book-cover={book.cover}
+            data-book-slug={book.slug}
+          >
+            <h2>Personalize your book</h2>
+
+            <label>
+              Child's name in Arabic
+              <input
+                id="child-name-arabic"
+                type="text"
+                placeholder="ليلى"
+                required
+              />
+            </label>
+
+            <label>
+              Child's second name
+              <input
+                id="child-name-secondary"
+                type="text"
+                placeholder="Layla"
+                required
+              />
+            </label>
+
+            <label>
+              Second language
+              <select id="secondary-language" required>
+                <option value="English">English</option>
+                <option value="French">French</option>
+              </select>
+            </label>
+
+            <fieldset>
+              <legend>Child</legend>
+
+              <div class="choices">
+                <label class="choice">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="girl"
+                    checked
+                  />
+                  Girl
+                </label>
+
+                <label class="choice">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="boy"
+                  />
+                  Boy
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Book cover</legend>
+
+              <div class="choices">
+                <label class="choice">
+                  <input
+                    type="radio"
+                    name="cover"
+                    value="softcover"
+                    checked
+                  />
+                  <span>
+                    Softcover
+                    <small>Included</small>
+                  </span>
+                </label>
+
+                <label class="choice">
+                  <input
+                    type="radio"
+                    name="cover"
+                    value="hardcover"
+                  />
+                  <span>
+                    Hardcover
+                    <small>+$8</small>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <label class="checkbox-row">
+              <input id="gift-wrap" type="checkbox" />
+              <span>
+                Add gift wrapping
+                <small>+$4</small>
+              </span>
+            </label>
+
+            <label>
+              Quantity
+              <input
+                id="quantity"
+                type="number"
+                value="1"
+                min="1"
+                max="10"
+              />
+            </label>
+
+            <div class="price-box">
+              <span>Total</span>
+
+              <strong id="live-price">
+                ${book.price.toFixed(2)}
+              </strong>
+            </div>
+
+            <p id="quote-message"></p>
+
+            <button id="add-to-cart" type="submit">
+              Add to Cart
+            </button>
+
+            <p id="cart-message"></p>
+          </form>
         </div>
       </section>
     </main>
+
+    <script>
+      const form = document.getElementById(
+        "customization-form"
+      );
+
+      const priceElement = document.getElementById("live-price");
+      const quoteMessage = document.getElementById("quote-message");
+      const cartMessage = document.getElementById("cart-message");
+      const cartCount = document.getElementById("cart-count");
+
+      function getCart() {
+        try {
+          return JSON.parse(
+            localStorage.getItem("bookshop-cart") || "[]"
+          );
+        } catch {
+          return [];
+        }
+      }
+
+      function updateCartCount() {
+        if (!cartCount) return;
+
+        const cart = getCart();
+
+        const count = cart.reduce(
+          (total, item) => total + Number(item.quantity || 1),
+          0
+        );
+
+        cartCount.textContent = String(count);
+      }
+
+      function getFormData() {
+        if (!(form instanceof HTMLFormElement)) {
+          return null;
+        }
+
+        const bookId = Number(form.dataset.bookId);
+
+        const quantityInput =
+          document.getElementById("quantity");
+
+        const giftWrapInput =
+          document.getElementById("gift-wrap");
+
+        const arabicNameInput =
+          document.getElementById("child-name-arabic");
+
+        const secondaryNameInput =
+          document.getElementById("child-name-secondary");
+
+        const languageInput =
+          document.getElementById("secondary-language");
+
+        const selectedCover =
+          document.querySelector(
+            'input[name="cover"]:checked'
+          );
+
+        const selectedGender =
+          document.querySelector(
+            'input[name="gender"]:checked'
+          );
+
+        return {
+          book_id: bookId,
+
+          quantity:
+            quantityInput instanceof HTMLInputElement
+              ? Number(quantityInput.value)
+              : 1,
+
+          cover_type:
+            selectedCover instanceof HTMLInputElement
+              ? selectedCover.value
+              : "softcover",
+
+          gift_wrap:
+            giftWrapInput instanceof HTMLInputElement
+              ? giftWrapInput.checked
+              : false,
+
+          child_name_arabic:
+            arabicNameInput instanceof HTMLInputElement
+              ? arabicNameInput.value.trim()
+              : "",
+
+          child_name_secondary:
+            secondaryNameInput instanceof HTMLInputElement
+              ? secondaryNameInput.value.trim()
+              : "",
+
+          secondary_language:
+            languageInput instanceof HTMLSelectElement
+              ? languageInput.value
+              : "English",
+
+          child_gender:
+            selectedGender instanceof HTMLInputElement
+              ? selectedGender.value
+              : "girl",
+        };
+      }
+
+      async function requestQuote() {
+        const item = getFormData();
+
+        if (!item) return null;
+
+        try {
+          if (quoteMessage) {
+            quoteMessage.textContent = "Calculating...";
+          }
+
+          const response = await fetch("/api/cart/quote", {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              items: [item],
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              data.error || "Could not calculate price"
+            );
+          }
+
+          if (priceElement) {
+            priceElement.textContent =
+              `$${Number(data.subtotal).toFixed(2)}`;
+          }
+
+          if (quoteMessage) {
+            quoteMessage.textContent = "";
+          }
+
+          return data;
+        } catch (error) {
+          console.error(error);
+
+          if (quoteMessage) {
+            quoteMessage.textContent =
+              "Could not calculate the price.";
+          }
+
+          return null;
+        }
+      }
+
+      form?.addEventListener("change", () => {
+        requestQuote();
+      });
+
+      document
+        .getElementById("quantity")
+        ?.addEventListener("input", () => {
+          requestQuote();
+        });
+
+      form?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        if (!(form instanceof HTMLFormElement)) return;
+
+        if (!form.checkValidity()) {
+          form.reportValidity();
+          return;
+        }
+
+        const quote = await requestQuote();
+
+        if (!quote || !quote.items?.length) {
+          return;
+        }
+
+        const quotedItem = quote.items[0];
+
+        const cart = getCart();
+
+        const cartItem = {
+          cart_id: crypto.randomUUID(),
+
+          ...quotedItem,
+
+          title: form.dataset.bookTitle,
+          cover: form.dataset.bookCover,
+          slug: form.dataset.bookSlug,
+        };
+
+        cart.push(cartItem);
+
+        localStorage.setItem(
+          "bookshop-cart",
+          JSON.stringify(cart)
+        );
+
+        updateCartCount();
+
+        if (cartMessage) {
+          cartMessage.textContent =
+            "✓ Added to your cart";
+        }
+      });
+
+      updateCartCount();
+
+      requestQuote();
+    </script>
   </body>
 </html>
 
 <style>
+  * {
+    box-sizing: border-box;
+  }
+
   body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -59,78 +422,231 @@ const { book } = Astro.props;
     color: #222;
   }
 
-  main {
-    max-width: 1100px;
+  header {
+    background: white;
+    border-bottom: 1px solid #eee;
+  }
+
+  nav {
+    max-width: 1200px;
     margin: auto;
-    padding: 60px 24px;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  nav a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .logo {
+    font-weight: 700;
+    font-size: 20px;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 24px;
+  }
+
+  #cart-count {
+    background: #222;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 40px 24px 80px;
   }
 
   .back {
     display: inline-block;
-    margin-bottom: 30px;
-    color: #555;
+    margin-bottom: 35px;
+    color: #666;
     text-decoration: none;
   }
 
-  .book {
+  .product {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 60px;
-    align-items: center;
+    gap: 70px;
+    align-items: start;
   }
 
-  img {
+  .product-image {
+    position: sticky;
+    top: 30px;
+  }
+
+  .product-image img {
     width: 100%;
-    max-height: 650px;
+    max-height: 720px;
     object-fit: cover;
-    border-radius: 16px;
+    border-radius: 20px;
   }
 
   .category {
     color: #777;
     text-transform: uppercase;
     letter-spacing: 2px;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   h1 {
     font-size: 48px;
-    margin: 10px 0;
+    margin: 8px 0;
   }
 
   .author {
     color: #666;
+    font-size: 18px;
   }
 
   .description {
-    font-size: 18px;
-    line-height: 1.6;
-    margin: 28px 0;
+    font-size: 17px;
+    line-height: 1.7;
+    margin: 25px 0;
   }
 
-  .info {
+  .metadata {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .metadata span {
+    padding: 7px 12px;
+    background: #eee7dc;
+    border-radius: 20px;
+    font-size: 13px;
+  }
+
+  hr {
+    border: none;
     border-top: 1px solid #ddd;
-    border-bottom: 1px solid #ddd;
-    padding: 16px 0;
+    margin: 35px 0;
   }
 
-  .price {
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  form h2 {
+    margin: 0;
+    font-size: 27px;
+  }
+
+  label,
+  legend {
+    font-weight: 600;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background: white;
+  }
+
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  .choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .choice {
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .choice small,
+  .checkbox-row small {
+    display: block;
+    color: #777;
+    margin-top: 3px;
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+  }
+
+  .price-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #eee7dc;
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .price-box strong {
     font-size: 28px;
-    font-weight: bold;
   }
 
-  button {
+  #quote-message {
+    margin: 0;
+    color: #777;
+  }
+
+  #add-to-cart {
+    border: 0;
+    border-radius: 10px;
+    padding: 17px;
     background: #222;
     color: white;
-    border: 0;
-    padding: 15px 24px;
-    border-radius: 8px;
+    font-size: 17px;
     cursor: pointer;
   }
 
-  @media (max-width: 700px) {
-    .book {
+  #add-to-cart:hover {
+    opacity: 0.9;
+  }
+
+  #cart-message {
+    color: #27703f;
+    font-weight: 600;
+    text-align: center;
+    min-height: 20px;
+  }
+
+  @media (max-width: 800px) {
+    .product {
       grid-template-columns: 1fr;
+    }
+
+    .product-image {
+      position: static;
     }
 
     h1 {

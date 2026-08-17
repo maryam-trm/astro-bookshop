@@ -1,0 +1,491 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Payment | Little Leaf Books</title>
+  </head>
+
+  <body>
+    <header>
+      <nav>
+        <a class="logo" href="/">Little Leaf Books</a>
+        <span>Secure Test Payment</span>
+      </nav>
+    </header>
+
+    <main>
+      <section class="payment-layout">
+        <form id="payment-form">
+          <p class="eyebrow">TEST PAYMENT</p>
+
+          <h1>Complete payment</h1>
+
+          <p class="notice">
+            This is a mock payment form for development only.
+            No real card will be charged.
+          </p>
+
+          <label>
+            Name on card
+            <input
+              id="card-name"
+              type="text"
+              required
+              placeholder="Maryam K"
+            />
+          </label>
+
+          <label>
+            Card number
+            <input
+              id="card-number"
+              type="text"
+              inputmode="numeric"
+              required
+              maxlength="19"
+              placeholder="4242 4242 4242 4242"
+            />
+          </label>
+
+          <div class="two-columns">
+            <label>
+              Expiry
+              <input
+                id="expiry"
+                type="text"
+                required
+                maxlength="5"
+                placeholder="12/30"
+              />
+            </label>
+
+            <label>
+              CVV
+              <input
+                id="cvv"
+                type="password"
+                inputmode="numeric"
+                required
+                maxlength="4"
+                placeholder="123"
+              />
+            </label>
+          </div>
+
+          <button id="pay-button" type="submit">
+            Pay <span id="button-total">$0.00</span>
+          </button>
+
+          <p id="message"></p>
+        </form>
+
+        <aside>
+          <p class="eyebrow">ORDER SUMMARY</p>
+
+          <h2>
+            Order <span id="order-number">—</span>
+          </h2>
+
+          <div class="row">
+            <span>Status</span>
+            <strong id="payment-status">
+              Pending
+            </strong>
+          </div>
+
+          <div class="row total">
+            <span>Total</span>
+            <strong id="order-total">
+              $0.00
+            </strong>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const LAST_ORDER_KEY =
+        "bookshop-last-order";
+
+      function getOrder() {
+        try {
+          const value =
+            localStorage.getItem(
+              LAST_ORDER_KEY
+            );
+
+          return value
+            ? JSON.parse(value)
+            : null;
+        } catch {
+          return null;
+        }
+      }
+
+      const order = getOrder();
+
+      if (!order?.order_id) {
+        window.location.href = "/";
+      } else {
+        const orderNumber =
+          document.getElementById(
+            "order-number"
+          );
+
+        const orderTotal =
+          document.getElementById(
+            "order-total"
+          );
+
+        const buttonTotal =
+          document.getElementById(
+            "button-total"
+          );
+
+        const paymentStatus =
+          document.getElementById(
+            "payment-status"
+          );
+
+        if (orderNumber) {
+          orderNumber.textContent =
+            `#${order.order_id}`;
+        }
+
+        const total =
+          Number(order.total || 0);
+
+        if (orderTotal) {
+          orderTotal.textContent =
+            `$${total.toFixed(2)}`;
+        }
+
+        if (buttonTotal) {
+          buttonTotal.textContent =
+            `$${total.toFixed(2)}`;
+        }
+
+        if (paymentStatus) {
+          paymentStatus.textContent =
+            order.payment_status ||
+            "pending";
+        }
+      }
+
+      const cardNumberInput =
+        document.getElementById(
+          "card-number"
+        );
+
+      cardNumberInput?.addEventListener(
+        "input",
+        () => {
+          if (
+            !(
+              cardNumberInput instanceof
+              HTMLInputElement
+            )
+          ) {
+            return;
+          }
+
+          const numbers =
+            cardNumberInput.value
+              .replace(/\D/g, "")
+              .slice(0, 16);
+
+          cardNumberInput.value =
+            numbers
+              .replace(
+                /(\d{4})(?=\d)/g,
+                "$1 "
+              );
+        }
+      );
+
+      document
+        .getElementById("payment-form")
+        ?.addEventListener(
+          "submit",
+          async (event) => {
+            event.preventDefault();
+
+            const form =
+              event.currentTarget;
+
+            if (
+              !(
+                form instanceof
+                HTMLFormElement
+              )
+            ) {
+              return;
+            }
+
+            if (!form.checkValidity()) {
+              form.reportValidity();
+              return;
+            }
+
+            const currentOrder =
+              getOrder();
+
+            if (!currentOrder?.order_id) {
+              return;
+            }
+
+            const payButton =
+              document.getElementById(
+                "pay-button"
+              );
+
+            const message =
+              document.getElementById(
+                "message"
+              );
+
+            try {
+              if (
+                payButton instanceof
+                HTMLButtonElement
+              ) {
+                payButton.disabled = true;
+                payButton.textContent =
+                  "Processing...";
+              }
+
+              if (message) {
+                message.textContent =
+                  "Processing test payment...";
+              }
+
+              const response =
+                await fetch(
+                  `/api/orders/${currentOrder.order_id}/pay`,
+                  {
+                    method: "POST",
+                  }
+                );
+
+              const paidOrder =
+                await response.json();
+
+              if (!response.ok) {
+                throw new Error(
+                  paidOrder.error ||
+                    "Payment failed"
+                );
+              }
+
+              localStorage.setItem(
+                LAST_ORDER_KEY,
+                JSON.stringify(
+                  paidOrder
+                )
+              );
+
+              // The order is now paid,
+              // so clear the cart.
+              localStorage.removeItem(
+                "bookshop-cart"
+              );
+
+              if (message) {
+                message.textContent =
+                  "✓ Payment successful. Redirecting...";
+              }
+
+              setTimeout(() => {
+                window.location.href =
+                  "/order-confirmation/";
+              }, 800);
+            } catch (error) {
+              console.error(error);
+
+              if (message) {
+                message.textContent =
+                  "Payment failed. Please try again.";
+              }
+
+              if (
+                payButton instanceof
+                HTMLButtonElement
+              ) {
+                payButton.disabled =
+                  false;
+
+                payButton.innerHTML =
+                  `Pay <span id="button-total">$${Number(
+                    currentOrder.total
+                  ).toFixed(2)}</span>`;
+              }
+            }
+          }
+        );
+    </script>
+  </body>
+</html>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: #faf8f4;
+    color: #222;
+    font-family: Arial, sans-serif;
+  }
+
+  header {
+    background: white;
+    border-bottom: 1px solid #eee;
+  }
+
+  nav {
+    max-width: 1100px;
+    margin: auto;
+    padding: 20px 24px;
+
+    display: flex;
+    justify-content: space-between;
+  }
+
+  nav a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .logo {
+    font-weight: 700;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: auto;
+    padding: 60px 24px;
+  }
+
+  .payment-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 60px;
+    align-items: start;
+  }
+
+  form,
+  aside {
+    background: white;
+    padding: 35px;
+    border-radius: 18px;
+  }
+
+  .eyebrow {
+    margin-top: 0;
+
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #777;
+  }
+
+  h1 {
+    font-size: 42px;
+    margin: 8px 0 15px;
+  }
+
+  .notice {
+    margin-bottom: 30px;
+    padding: 15px;
+
+    border-radius: 10px;
+    background: #fff4d8;
+    color: #6e5520;
+  }
+
+  label {
+    display: block;
+    margin: 20px 0;
+    font-weight: 600;
+  }
+
+  input {
+    width: 100%;
+    margin-top: 7px;
+    padding: 14px;
+
+    border: 1px solid #ccc;
+    border-radius: 9px;
+
+    font-size: 16px;
+  }
+
+  .two-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 17px;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: #222;
+    color: white;
+
+    font-size: 17px;
+    font-weight: 700;
+
+    cursor: pointer;
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  aside {
+    position: sticky;
+    top: 30px;
+  }
+
+  aside h2 {
+    margin-top: 8px;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+
+    margin: 22px 0;
+  }
+
+  .total {
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+
+    font-size: 21px;
+  }
+
+  #message {
+    min-height: 22px;
+    text-align: center;
+    color: #27703f;
+    font-weight: 600;
+  }
+
+  @media (max-width: 800px) {
+    .payment-layout {
+      grid-template-columns: 1fr;
+    }
+
+    aside {
+      position: static;
+    }
+  }
+</style>

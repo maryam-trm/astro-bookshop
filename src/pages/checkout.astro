@@ -1,0 +1,775 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Checkout | Little Leaf Books</title>
+  </head>
+
+  <body>
+    <header>
+      <nav>
+        <a class="logo" href="/">Little Leaf Books</a>
+        <a href="/cart">← Back to cart</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="checkout">
+        <form id="checkout-form">
+          <p class="eyebrow">CHECKOUT</p>
+          <h1>Complete your order</h1>
+
+          <h2>Contact information</h2>
+
+          <label>
+            Email
+            <input
+              id="email"
+              type="email"
+              required
+              placeholder="you@example.com"
+            />
+          </label>
+
+          <label>
+            Full name
+            <input
+              id="customer-name"
+              type="text"
+              required
+              placeholder="Your full name"
+            />
+          </label>
+
+          <label>
+            Phone
+            <input
+              id="phone"
+              type="tel"
+              required
+              placeholder="+961 ..."
+            />
+          </label>
+
+          <h2>Shipping address</h2>
+
+          <label>
+            Country
+            <select id="country" required>
+              <option value="">Select country</option>
+              <option value="Lebanon">Lebanon</option>
+              <option value="UAE">United Arab Emirates</option>
+              <option value="Saudi Arabia">Saudi Arabia</option>
+              <option value="Kuwait">Kuwait</option>
+              <option value="Qatar">Qatar</option>
+            </select>
+          </label>
+
+          <label>
+            City
+            <input
+              id="city"
+              type="text"
+              required
+              placeholder="City"
+            />
+          </label>
+
+          <label>
+            Address
+            <textarea
+              id="address"
+              required
+              placeholder="Street, building, floor..."
+            ></textarea>
+          </label>
+
+          <h2>Shipping method</h2>
+
+          <label class="shipping-option">
+            <input
+              type="radio"
+              name="shipping"
+              value="standard"
+              data-cost="5"
+              checked
+            />
+
+            <span>
+              <strong>Standard delivery</strong>
+              <small>3–5 business days</small>
+            </span>
+
+            <strong>$5</strong>
+          </label>
+
+          <label class="shipping-option">
+            <input
+              type="radio"
+              name="shipping"
+              value="express"
+              data-cost="12"
+            />
+
+            <span>
+              <strong>Express delivery</strong>
+              <small>1–2 business days</small>
+            </span>
+
+            <strong>$12</strong>
+          </label>
+
+          <button id="submit-order" type="submit">
+            Continue to Payment
+          </button>
+
+          <p id="message"></p>
+        </form>
+
+        <aside>
+          <h2>Order summary</h2>
+
+          <div id="order-items">
+            Loading...
+          </div>
+
+          <hr />
+
+          <div class="row">
+            <span>Subtotal</span>
+            <strong id="subtotal">$0.00</strong>
+          </div>
+
+          <div class="row">
+            <span>Shipping</span>
+            <strong id="shipping">$5.00</strong>
+          </div>
+
+          <hr />
+
+          <div class="row total">
+            <span>Total</span>
+            <strong id="total">$0.00</strong>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const CART_KEY = "bookshop-cart";
+      const LAST_ORDER_KEY = "bookshop-last-order";
+
+      let currentSubtotal = 0;
+
+      function getCart() {
+        try {
+          return JSON.parse(
+            localStorage.getItem(CART_KEY) || "[]"
+          );
+        } catch {
+          return [];
+        }
+      }
+
+      async function loadSummary() {
+        const cart = getCart();
+
+        if (!cart.length) {
+          window.location.href = "/cart";
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/cart/quote", {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+              items: cart.map((item) => ({
+                book_id: item.book_id,
+                quantity: item.quantity,
+                cover_type: item.cover_type,
+                gift_wrap: item.gift_wrap,
+                child_name_arabic:
+                  item.child_name_arabic,
+                child_name_secondary:
+                  item.child_name_secondary,
+                secondary_language:
+                  item.secondary_language,
+                child_gender:
+                  item.child_gender,
+              })),
+            }),
+          });
+
+          const quote = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              quote.error ||
+                "Could not calculate order summary"
+            );
+          }
+
+          currentSubtotal = Number(quote.subtotal);
+
+          const itemsContainer =
+            document.getElementById("order-items");
+
+          if (itemsContainer) {
+            itemsContainer.innerHTML = quote.items
+              .map(
+                (item) => `
+                  <div class="order-item">
+                    <div>
+                      <strong>${item.title}</strong>
+
+                      <small>
+                        ${item.cover_type}
+                        ${
+                          item.gift_wrap
+                            ? " • Gift wrapped"
+                            : ""
+                        }
+                      </small>
+
+                      <small>
+                        ${
+                          item.child_name_secondary ||
+                          ""
+                        }
+                      </small>
+                    </div>
+
+                    <span>
+                      ${item.quantity} ×
+                      $${Number(
+                        item.unit_price
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                `
+              )
+              .join("");
+          }
+
+          updateTotals();
+        } catch (error) {
+          console.error(error);
+
+          const itemsContainer =
+            document.getElementById("order-items");
+
+          if (itemsContainer) {
+            itemsContainer.textContent =
+              "Could not load order summary.";
+          }
+        }
+      }
+
+      function getShippingCost() {
+        const selected =
+          document.querySelector(
+            'input[name="shipping"]:checked'
+          );
+
+        if (
+          !(selected instanceof HTMLInputElement)
+        ) {
+          return 0;
+        }
+
+        return Number(
+          selected.dataset.cost || 0
+        );
+      }
+
+      function updateTotals() {
+        const shipping = getShippingCost();
+
+        const total =
+          currentSubtotal + shipping;
+
+        const subtotalElement =
+          document.getElementById("subtotal");
+
+        const shippingElement =
+          document.getElementById("shipping");
+
+        const totalElement =
+          document.getElementById("total");
+
+        if (subtotalElement) {
+          subtotalElement.textContent =
+            `$${currentSubtotal.toFixed(2)}`;
+        }
+
+        if (shippingElement) {
+          shippingElement.textContent =
+            `$${shipping.toFixed(2)}`;
+        }
+
+        if (totalElement) {
+          totalElement.textContent =
+            `$${total.toFixed(2)}`;
+        }
+      }
+
+      document
+        .querySelectorAll(
+          'input[name="shipping"]'
+        )
+        .forEach((input) => {
+          input.addEventListener(
+            "change",
+            updateTotals
+          );
+        });
+
+      document
+        .getElementById("checkout-form")
+        ?.addEventListener(
+          "submit",
+          async (event) => {
+            event.preventDefault();
+
+            const form =
+              event.currentTarget;
+
+            if (
+              !(form instanceof HTMLFormElement)
+            ) {
+              return;
+            }
+
+            if (!form.checkValidity()) {
+              form.reportValidity();
+              return;
+            }
+
+            const message =
+              document.getElementById(
+                "message"
+              );
+
+            const submitButton =
+              document.getElementById(
+                "submit-order"
+              );
+
+            const email =
+              document.getElementById(
+                "email"
+              );
+
+            const customerName =
+              document.getElementById(
+                "customer-name"
+              );
+
+            const phone =
+              document.getElementById(
+                "phone"
+              );
+
+            const country =
+              document.getElementById(
+                "country"
+              );
+
+            const city =
+              document.getElementById(
+                "city"
+              );
+
+            const address =
+              document.getElementById(
+                "address"
+              );
+
+            const shipping =
+              document.querySelector(
+                'input[name="shipping"]:checked'
+              );
+
+            if (
+              !(
+                email instanceof
+                HTMLInputElement
+              ) ||
+              !(
+                customerName instanceof
+                HTMLInputElement
+              ) ||
+              !(
+                phone instanceof
+                HTMLInputElement
+              ) ||
+              !(
+                country instanceof
+                HTMLSelectElement
+              ) ||
+              !(
+                city instanceof
+                HTMLInputElement
+              ) ||
+              !(
+                address instanceof
+                HTMLTextAreaElement
+              ) ||
+              !(
+                shipping instanceof
+                HTMLInputElement
+              )
+            ) {
+              return;
+            }
+
+            const cart = getCart();
+
+            if (!cart.length) {
+              window.location.href =
+                "/cart";
+
+              return;
+            }
+
+            try {
+              if (
+                submitButton instanceof
+                HTMLButtonElement
+              ) {
+                submitButton.disabled =
+                  true;
+
+                submitButton.textContent =
+                  "Creating order...";
+              }
+
+              if (message) {
+                message.textContent =
+                  "Creating your order...";
+              }
+
+              const response =
+                await fetch("/api/orders", {
+                  method: "POST",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json",
+                  },
+
+                  body: JSON.stringify({
+                    customer_email:
+                      email.value.trim(),
+
+                    customer_name:
+                      customerName.value.trim(),
+
+                    phone:
+                      phone.value.trim(),
+
+                    shipping_address:
+                      `${address.value.trim()}, ${city.value.trim()}`,
+
+                    shipping_country:
+                      country.value,
+
+                    shipping_method:
+                      shipping.value,
+
+                    items: cart.map(
+                      (item) => ({
+                        book_id:
+                          item.book_id,
+
+                        quantity:
+                          item.quantity,
+
+                        cover_type:
+                          item.cover_type,
+
+                        gift_wrap:
+                          item.gift_wrap,
+
+                        child_name_arabic:
+                          item.child_name_arabic,
+
+                        child_name_secondary:
+                          item.child_name_secondary,
+
+                        secondary_language:
+                          item.secondary_language,
+
+                        child_gender:
+                          item.child_gender,
+                      })
+                    ),
+                  }),
+                });
+
+              const order =
+                await response.json();
+
+              if (!response.ok) {
+                throw new Error(
+                  order.error ||
+                    "Could not create order"
+                );
+              }
+
+              // Save the pending order.
+              // The payment page will read this.
+              localStorage.setItem(
+                LAST_ORDER_KEY,
+                JSON.stringify(order)
+              );
+
+              /*
+                IMPORTANT:
+
+                Do NOT clear the cart here.
+
+                The order currently exists in PostgreSQL,
+                but payment_status is still "pending".
+
+                The cart will only be cleared after the
+                mock payment succeeds.
+              */
+
+              if (message) {
+                message.textContent =
+                  `✓ Order #${order.order_id} created. Redirecting to payment...`;
+              }
+
+              if (
+                submitButton instanceof
+                HTMLButtonElement
+              ) {
+                submitButton.textContent =
+                  "Continue to Payment";
+              }
+
+              console.log(
+                "Pending order created:",
+                order
+              );
+
+              setTimeout(() => {
+                window.location.href =
+                  "/payment/";
+              }, 800);
+            } catch (error) {
+              console.error(error);
+
+              if (message) {
+                message.textContent =
+                  "Could not create your order. Please try again.";
+              }
+
+              if (
+                submitButton instanceof
+                HTMLButtonElement
+              ) {
+                submitButton.disabled =
+                  false;
+
+                submitButton.textContent =
+                  "Continue to Payment";
+              }
+            }
+          }
+        );
+
+      loadSummary();
+    </script>
+  </body>
+</html>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: #faf8f4;
+    color: #222;
+    font-family: Arial, sans-serif;
+  }
+
+  header {
+    background: white;
+    border-bottom: 1px solid #eee;
+  }
+
+  nav {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  nav a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .logo {
+    font-weight: bold;
+  }
+
+  main {
+    max-width: 1200px;
+    margin: auto;
+    padding: 60px 24px;
+  }
+
+  .checkout {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 70px;
+  }
+
+  .eyebrow {
+    color: #777;
+    letter-spacing: 2px;
+    font-size: 12px;
+  }
+
+  h1 {
+    font-size: 44px;
+    margin: 8px 0 40px;
+  }
+
+  h2 {
+    margin-top: 35px;
+  }
+
+  label {
+    display: block;
+    margin: 18px 0;
+    font-weight: 600;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    margin-top: 7px;
+    padding: 14px;
+    border: 1px solid #ccc;
+    border-radius: 9px;
+    background: white;
+    font-size: 15px;
+  }
+
+  textarea {
+    min-height: 100px;
+  }
+
+  .shipping-option {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 15px;
+
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background: white;
+  }
+
+  .shipping-option input {
+    width: auto;
+    margin: 0;
+  }
+
+  .shipping-option small {
+    display: block;
+    margin-top: 4px;
+    color: #777;
+  }
+
+  button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 17px;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: #222;
+    color: white;
+
+    font-size: 16px;
+    font-weight: bold;
+
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  aside {
+    position: sticky;
+    top: 30px;
+
+    padding: 30px;
+    background: white;
+    border-radius: 16px;
+  }
+
+  aside h2 {
+    margin-top: 0;
+  }
+
+  .order-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .order-item small {
+    display: block;
+    margin-top: 5px;
+    color: #777;
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    margin: 18px 0;
+  }
+
+  .total {
+    font-size: 21px;
+  }
+
+  #message {
+    min-height: 22px;
+    color: #27703f;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  @media (max-width: 850px) {
+    .checkout {
+      grid-template-columns: 1fr;
+    }
+
+    aside {
+      position: static;
+    }
+  }
+</style>
