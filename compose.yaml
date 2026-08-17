@@ -1,0 +1,61 @@
+services:
+  bookshop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: astro-bookshop:1.0
+    container_name: astro-bookshop
+    ports:
+      - "8080:80"
+    environment:
+      API_URL: http://api:3000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: astro-bookshop-api:1.0
+    ports:
+      - "3003:3000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+    secrets:
+      - db_password
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: ${POSTGRES_DB}
+    secrets:
+      - db_password
+    volumes:
+      - bookshop-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  bookshop-data:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt

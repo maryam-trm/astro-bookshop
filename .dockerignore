@@ -1,0 +1,10 @@
+node_modules
+dist
+.astro
+.git
+.vscode
+.env
+.env.*
+npm-debug.log*
+compose*.yaml
+README.md

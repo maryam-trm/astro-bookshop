@@ -1,0 +1,140 @@
+---
+import { books } from "../../data/books";
+
+export function getStaticPaths() {
+  return books.map((book) => ({
+    params: { slug: book.slug },
+    props: { book },
+  }));
+}
+
+const { book } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{book.title} | Little Leaf Books</title>
+  </head>
+
+  <body>
+    <main>
+      <a class="back" href="/books">← Back to books</a>
+
+      <section class="book">
+        <img src={book.cover} alt={book.title} />
+
+        <div class="details">
+          <p class="category">{book.category}</p>
+
+          <h1>{book.title}</h1>
+
+          <p class="author">by {book.author}</p>
+
+          <p class="description">
+            {book.description}
+          </p>
+
+          <div class="info">
+            <p><strong>Age:</strong> {book.age}</p>
+            <p><strong>Language:</strong> {book.language}</p>
+            <p><strong>Category:</strong> {book.category}</p>
+          </div>
+
+          <p class="price">${book.price}</p>
+
+          <button>Add to cart</button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #faf8f4;
+    color: #222;
+  }
+
+  main {
+    max-width: 1100px;
+    margin: auto;
+    padding: 60px 24px;
+  }
+
+  .back {
+    display: inline-block;
+    margin-bottom: 30px;
+    color: #555;
+    text-decoration: none;
+  }
+
+  .book {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+
+  img {
+    width: 100%;
+    max-height: 650px;
+    object-fit: cover;
+    border-radius: 16px;
+  }
+
+  .category {
+    color: #777;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 13px;
+  }
+
+  h1 {
+    font-size: 48px;
+    margin: 10px 0;
+  }
+
+  .author {
+    color: #666;
+  }
+
+  .description {
+    font-size: 18px;
+    line-height: 1.6;
+    margin: 28px 0;
+  }
+
+  .info {
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+    padding: 16px 0;
+  }
+
+  .price {
+    font-size: 28px;
+    font-weight: bold;
+  }
+
+  button {
+    background: #222;
+    color: white;
+    border: 0;
+    padding: 15px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  @media (max-width: 700px) {
+    .book {
+      grid-template-columns: 1fr;
+    }
+
+    h1 {
+      font-size: 36px;
+    }
+  }
+</style>
